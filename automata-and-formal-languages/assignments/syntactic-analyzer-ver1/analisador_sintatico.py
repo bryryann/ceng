@@ -435,6 +435,32 @@ class AnalisadorLexico:
 
         return tokens
 
+
+class AnalisadorSintatico:
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.pos = 0         # posicao do token atual
+
+    def token_atual(self):
+        if self.pos < len(self.tokens):
+            return self.tokens[self.pos]
+
+        return ('FIM', '', -1)
+
+    def avancar(self):
+        self.pos += 1
+
+    def consumir(self, tipo):
+        tipo_token, valor, linha = self.token_atual()
+
+        if tipo_token == tipo:
+            self.avancar()
+        else:
+            raise Exception(
+                f"Erro sintático: esperado {tipo}, encontrado {tipo_token}"
+            )
+
+
 lexer = AnalisadorLexico(trn, res)
 
 codigo = """
@@ -456,6 +482,8 @@ end.
 """
 
 tokens = lexer.analisar(codigo)
+
+synt = AnalisadorSintatico(tokens)
 
 for tipo, valor, linha in tokens: 
     print(f"Linha {linha:<3} | {tipo:<20} | {valor}")
