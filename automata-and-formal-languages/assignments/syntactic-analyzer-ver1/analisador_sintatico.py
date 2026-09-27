@@ -451,13 +451,145 @@ class AnalisadorSintatico:
         self.pos += 1
 
     def consumir(self, tipo):
-        tipo_token, valor, linha = self.token_atual()
+        tipo_token, _, _ = self.token_atual()
 
         if tipo_token == tipo:
             self.avancar()
         else:
             raise Exception(
                 f"Erro sintático: esperado {tipo}, encontrado {tipo_token}"
+            )
+
+    def analisar(self):
+        self.programa()
+
+        if self.token_atual()[0] != 'FIM':
+            raise Exception()
+
+        print('Análise Sintática concluída')
+
+    def programa(self):
+        self.consumir('PALAVRA_RESERVADA')
+        self.consumir('IDENTIFICADOR')
+        self.consumir('PONTO_E_VIRGULA')
+
+        self.bloco()
+
+        self.consumir('PONTO')
+
+    def bloco(self):
+        tipo, valor, _ = self.token_atual()
+
+        if tipo == 'PALAVRA_RESERVADA' and valor == 'var':
+            self.declaracoes()
+
+        self.consumir_palavra('begin')
+
+        self.comandos()
+
+        self.consumir_palavra('end')
+
+    def consumir_palavra(self, palavra):
+        tipo, valor, linha = self.token_atual()
+
+        if tipo == 'PALAVRA_RESERVADA' and valor == palavra:
+            self.avancar()
+        else:
+            raise Exception(
+                f"Erro na linha {linha}"
+                f"esperado '{palavra}' encontrado '{valor}'"
+            )
+
+    def declaracoes(self):
+        self.consumir_palavra('var')
+
+        while self.token_atual()[0] == 'IDENTIFICADOR':
+            self.consumir('IDENTIFICADOR')
+
+            while self.token_atual()[0] == 'VIRGULA':
+                self.consumir('VIRGULA')
+                self.consumir('IDENTIFICADOR')
+
+            self.consumir('DOIS_PONTOS')
+            self.consumir('IDENTIFICADOR')
+            self.consumir('PONTO_E_VIRGULA')
+
+    def comandos(self):
+        while True:
+            tipo, valor, _ = self.token_atual()
+
+            if tipo == 'PALAVRA_RESERVADA' and valor == 'end':
+                break
+
+            self.comando()
+
+            if self.token_atual()[0] == 'PONTO_E_VIRGULA':
+                self.consumir('PONTO_E_VIRGULA')
+            else:
+                break
+
+    def comando(self):
+        tipo, valor, _ = self.token_atual()
+
+        if tipo == 'IDENTIFICADOR':
+            self.atribuicao()
+        elif valor == 'if':
+            self.comando_if()
+        elif valor == 'while':
+            self.comando_while()
+        else:
+            raise Exception('Comando inesperado')
+
+    def atribuicao(self):
+        self.consumir('IDENTIFICADOR')
+        self.consumir('ATRIBUICAO')
+        self.expressao()
+
+    def comando_if(self):
+        self.consumir_palavra('if')
+        self.expressao()
+        self.consumir_palavra('then')
+        self.comando()
+
+    def comando_while(self):
+        self.consumir_palavra('while')
+        self.expressao()
+        self.consumir_palavra('do')
+        self.comando()
+
+    def expressao(self):
+        self.termo()
+
+        operadores = {
+            'SOMA',
+            'SUBTRACAO',
+            'MULTIPLICACAO',
+            'DIVISAO',
+            'IGUAL',
+            'MENOR',
+            'MAIOR',
+            'MENOR_IGUAL',
+            'MAIOR_IGUAL',
+            'DIFERENTE'
+        }
+
+        while self.token_atual()[0] in operadores:
+            self.avancar()
+            self.termo()
+
+    def termo(self):
+        tipo, valor, linha = self.token_atual()
+
+        if tipo == 'IDENTIFICADOR':
+            self.avancar()
+
+        elif tipo == 'NUMERO':
+            self.avancar()
+
+        else:
+            raise Exception(
+                f"Esperado identificador ou número | linha: {linha}"
+                f"encontrado {valor}"
             )
 
 
@@ -484,6 +616,7 @@ end.
 tokens = lexer.analisar(codigo)
 
 synt = AnalisadorSintatico(tokens)
+synt.analisar()
 
 for tipo, valor, linha in tokens: 
     print(f"Linha {linha:<3} | {tipo:<20} | {valor}")
